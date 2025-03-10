@@ -27,7 +27,7 @@ def parse_config_fl_agent(config_file_path, logger):
     with open(config_file_path, "r") as file:
         config = json.load(file)
     
-    dataset_path = str(config["fl_agent"]["dataset_path"])
+    training_data_path = str(config["fl_agent"]["training_data_path"])
     aggregator_url = str(config["fl_agent"]["aggregator_url"])
     detector_url = str(config["fl_agent"]["detector_url"])
     local_epochs = int(config["fl_agent"]["local_epochs"])
@@ -41,7 +41,7 @@ def parse_config_fl_agent(config_file_path, logger):
     )
 
     return (
-        dataset_path,
+        training_data_path,
         aggregator_url,
         detector_url,
         local_epochs,

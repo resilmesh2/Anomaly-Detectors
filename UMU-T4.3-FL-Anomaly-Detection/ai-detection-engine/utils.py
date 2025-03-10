@@ -33,7 +33,7 @@ def parse_config_ai_detection_engine(config_file_path, logger):
     with open(config_file_path, "r") as file:
         config = json.load(file)
     
-    api_port = str(config["ai_detection_engine"]["api_port"])
+    listening_port = str(config["ai_detection_engine"]["listening_port"])
     model_polling_interval = int(config["ai_detection_engine"]["model_polling_interval"])
     testing_data_path = str(config["ai_detection_engine"]["testing_data_path"])
     broker_url = str(config["ai_detection_engine"]["broker_url"])
@@ -46,7 +46,7 @@ def parse_config_ai_detection_engine(config_file_path, logger):
     )
 
     return (
-        api_port,
+        listening_port,
         model_polling_interval,
         testing_data_path,
         broker_url,
