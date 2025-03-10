@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-# Anomaly-Detectors
-=======
-
 # Description
 
 This asset, framed in RESILMESH Task 4.3, is designed and implemented to provide a real-time Federated Learning (FL)-based anomaly and attack classification mechanism from flow traffic features. It incorporates noise adding and model clipping techniques to achieve a differentially private (DP) training, robust against the most relevant threats of a Federated Learning scenario.
@@ -129,4 +125,3 @@ It is recommended to build and launch the modules in the specified order. It is 
 
 The provided software is licensed under the GNU General Public License v3.0 (GPLv3)
 
->>>>>>> ba3813f (Initial integration version)
