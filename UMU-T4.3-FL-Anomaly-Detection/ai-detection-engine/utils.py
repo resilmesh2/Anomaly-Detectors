@@ -1,4 +1,3 @@
-from kafka import KafkaProducer, KafkaConsumer
 from preprocessor import (
     remove_flow_ids,
     convert_object_to_cat,
@@ -23,8 +22,6 @@ import logging
 import json
 import sys
 
-SECRET_KEY_FILE = "/app/flask_secret_key.txt"
-
 def parse_config_ai_detection_engine(config_file_path, logger):
     logger.info(
         f"GENERAL: Loading configuration parameters from file \'{config_file_path}\'..."
@@ -33,12 +30,12 @@ def parse_config_ai_detection_engine(config_file_path, logger):
     with open(config_file_path, "r") as file:
         config = json.load(file)
     
-    listening_port = str(config["ai_detection_engine"]["listening_port"])
+    api_port = str(config["ai_detection_engine"]["listening_port"])
     model_polling_interval = int(config["ai_detection_engine"]["model_polling_interval"])
     testing_data_path = str(config["ai_detection_engine"]["testing_data_path"])
-    broker_url = str(config["ai_detection_engine"]["broker_url"])
-    consumer_topic = str(config["ai_detection_engine"]["consumer_topic"])
-    producer_topic = str(config["ai_detection_engine"]["producer_topic"])
+    nats_server_url = str(config["ai_detection_engine"]["nats_server_url"])
+    consumer_subject = str(config["ai_detection_engine"]["consumer_subject"])
+    producer_subject = str(config["ai_detection_engine"]["producer_subject"])
     confidence_threshold = float(config["ai_detection_engine"]["confidence_threshold"])
 
     logger.info(
@@ -46,12 +43,12 @@ def parse_config_ai_detection_engine(config_file_path, logger):
     )
 
     return (
-        listening_port,
+        api_port,
         model_polling_interval,
         testing_data_path,
-        broker_url,
-        consumer_topic,
-        producer_topic,
+        nats_server_url,
+        consumer_subject,
+        producer_subject,
         confidence_threshold
     )
 
@@ -186,24 +183,6 @@ def test_model(model, x_test, y_test, encoder, logger):
 
     return accuracy
 
-def create_kafka_producer(broker_url, logger):
-    producer = KafkaProducer(bootstrap_servers=[broker_url])
-
-    logger.info(
-        f'RESULT: Kafka producer correctly created (ready to write), on broker {broker_url}')
-
-    return producer
-
-
-def create_kafka_consumer(topic, broker_url, logger, offset):
-    consumer = KafkaConsumer(
-        str(topic), group_id='default', bootstrap_servers=[broker_url], auto_offset_reset=offset)
-
-    logger.info(
-        f'RESULT: Kafka consumer correctly created (now listening), on broker {broker_url} and topic named \'{topic}\'')
-
-    return consumer
-
 def build_anomaly_alert(accuracy, attack_type, confidence, up_ip, down_ip, up_port, down_port, flow_features):
     json_data = {
         "attack_flow_alert": {
@@ -222,4 +201,5 @@ def build_anomaly_alert(accuracy, attack_type, confidence, up_ip, down_ip, up_po
     json_string = json.dumps(json_data, indent=2)
 
     return json_string
+
 

@@ -8,8 +8,6 @@ from utils import (
     create_no_logging_flask_app,
     create_custom_logger,
     parse_config_ai_detection_engine,
-    create_kafka_consumer,
-    create_kafka_producer,
     build_anomaly_alert,
     load_dataset,
     preprocess_testing_data,
@@ -28,6 +26,8 @@ import pandas as pd
 import json
 import time
 import threading
+import asyncio
+
 from flask import request, jsonify
 
 CONFIG_PATH = 'config/ai_detection_engine.conf'
@@ -44,7 +44,7 @@ def evaluate(encoded_flow, confidence_threshold, logger):
 
     start_time_decoding = time.time()
     logger.info('PROCESSING: Decoding current flow information')
-    decoded_flow = json.loads(encoded_flow.value.decode('utf-8'))
+    decoded_flow = json.loads(encoded_flow.data.decode('utf-8'))
     logger.info('RESULT: Current flow information successfully decoded')
     end_time_decoding = time.time()
 
@@ -91,58 +91,43 @@ def evaluate(encoded_flow, confidence_threshold, logger):
         return predicted_label, None, None, up_ip, down_ip, up_port, down_port
 
 
-def start(
-    model_polling_interval,
-    testing_data_path,
-    broker_url,
-    consumer_topic,
-    producer_topic,
-    confidence_threshold,
-    logger
-):
+def start(model_polling_interval, testing_data_path, nats_server_url, consumer_subject, producer_subject, confidence_threshold, logger):
     global current_model, current_scaler, current_encoder, current_feature_names
 
-    # Wait until the model is received
+    # Wait until the model and its parameters are set
     while current_model is None or current_scaler is None or current_encoder is None or current_feature_names is None:
         logger.info('GENERAL: Waiting for the initial model and additional parameters...')
         time.sleep(model_polling_interval)
 
-    # Create Kafka real-time consumer on specified broker/topic for receiving evaluation flows
-    logger.info('GENERAL: Creating Kafka consumer on specified broker/topic for receiving evaluation flows...')
-    consumer = create_kafka_consumer(consumer_topic, broker_url, logger, 'earliest')
-
-    logger.info('GENERAL: Creating Kafka producer on specified broker/topic to publish abnormal flows metadata (alerts)...')
-    producer = create_kafka_producer(broker_url, logger)
-
+    # Load testing data and compute accuracy (to be included in alert metadata)
     testing_df = load_dataset(testing_data_path, logger)
     x_test, y_test = preprocess_testing_data(testing_df, logger)
     accuracy = test_model(current_model, x_test, y_test, current_encoder, logger)
 
-    # Perform real-time detection (based on trained model) for each received flow
-    logger.info('GENERAL: Performing real-time anomaly detection against received evaluation flows...')
-    flow_count = 0
-    anomaly_count = 0
-    for flow in consumer:
-        flow_count += 1
-        print("Flujos recibidos:", flow_count)
-        print("Flujos detectados como ataque:", anomaly_count)
-        predicted_label, confidence, flow_features, \
-            up_ip, down_ip, up_port, down_port = evaluate(
-                flow,
-                confidence_threshold,
-                logger
-            )
+    async def run_nats_loop():
+        from nats.aio.client import Client as NATS
+        nc = NATS()
+        await nc.connect(servers=[nats_server_url])
+        logger.info(f"GENERAL: Connected to NATS server at {nats_server_url}")
 
-        if predicted_label != "Benign":
-            anomaly_count += 1
-            alert = build_anomaly_alert(
-                    accuracy, predicted_label, confidence, up_ip, down_ip, up_port, down_port, flow_features)
+        async def message_handler(msg):
+            nonlocal accuracy, nc
+            predicted_label, conf, flow_features, up_ip, down_ip, up_port, down_port = evaluate(msg, confidence_threshold, logger)
+            if predicted_label != "Benign":
+                alert = build_anomaly_alert(accuracy, predicted_label, conf, up_ip, down_ip, up_port, down_port, flow_features)
+                await nc.publish(producer_subject, alert.encode('utf-8'))
+                logger.info('RESULT: Abnormal flow metadata successfully published on alerts subject')
 
-            producer.send(producer_topic,
-                          value=alert.encode('utf-8'))
+        await nc.subscribe(consumer_subject, cb=message_handler)
+        logger.info(f"GENERAL: Subscribed to subject '{consumer_subject}' for evaluation flows.")
 
-            logger.info(
-                'RESULT: Abnormal flow metadata successfully published on alerts topic')
+        # Keep the async loop running
+        while True:
+            await asyncio.sleep(1)
+
+    # Run the async NATS loop in this thread
+    asyncio.run(run_nats_loop())
+
 
 if __name__ == "__main__":
     # Create Flask API to receive new models
@@ -165,18 +150,18 @@ if __name__ == "__main__":
         api_port,
         model_polling_interval,
         testing_data_path,
-        broker_url,
-        consumer_topic,
-        producer_topic,
+        nats_server_url,
+        consumer_subject,
+        producer_subject,
         confidence_threshold
     ) = parse_config_ai_detection_engine(CONFIG_PATH, logger)
 
     threading.Thread(target=start, args=(
         model_polling_interval,
         testing_data_path,
-        broker_url,
-        consumer_topic,
-        producer_topic,
+        nats_server_url,
+        consumer_subject,
+        producer_subject,
         confidence_threshold,
         logger)
     ).start()
@@ -217,3 +202,4 @@ if __name__ == "__main__":
             return jsonify({"message": "Failed to update model, scaler, encoder and training feature names"}), 400
     
     app.run(host="0.0.0.0", port=api_port)
+

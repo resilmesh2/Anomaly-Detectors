@@ -46,8 +46,6 @@ def main():
     encoder = fl_client.get_encoder()
     feature_names = fl_client.get_feature_names()
 
-    print("EEEEE: ", feature_names, flush=True)
-
     send_model_to_detector(final_model, scaler, encoder, feature_names, detector_url, logger)
 
 if __name__ == '__main__':
