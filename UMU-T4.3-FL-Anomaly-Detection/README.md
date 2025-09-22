@@ -113,5 +113,5 @@ It is recommended to build and launch the modules in the specified order. It is 
 
 # License
 
-The provided software is licensed under the GNU General Public License v3.0 (GPLv3)
+The provided software license can be found in file ```Resilmesh_License_RCD_140425_PPFL.docx```, placed inside the root folder in this repository.
 

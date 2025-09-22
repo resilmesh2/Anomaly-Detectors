@@ -1,3 +1,10 @@
+"""
+Authors:
+- Pablo Fernández Saura (pablofs@um.es), Dept. of Information and Communications Engineering, University of Murcia
+- Jorge Bernal Bernabé (jorgebernal@um.es), Dept. of Information and Communications Engineering, University of Murcia
+- Antonio Skarmeta (skarmeta@um.es), Dept. of Information and Communications Engineering, University of Murcia
+""" 
+
 from flwr.server.strategy import FedAvg
 from typing import Dict, List, Optional, Tuple
 from flwr.common import FitIns, Parameters

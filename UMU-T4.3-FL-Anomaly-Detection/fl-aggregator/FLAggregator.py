@@ -1,3 +1,10 @@
+"""
+Authors:
+- Pablo Fernández Saura (pablofs@um.es), Dept. of Information and Communications Engineering, University of Murcia
+- Jorge Bernal Bernabé (jorgebernal@um.es), Dept. of Information and Communications Engineering, University of Murcia
+- Antonio Skarmeta (skarmeta@um.es), Dept. of Information and Communications Engineering, University of Murcia
+""" 
+
 import os
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
